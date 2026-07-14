@@ -49,12 +49,13 @@ wasm {
 
     QMAKE_LFLAGS += -lidbfs.js
 
-    TRANSLATION_ENABLED = true
     CONFIG += qtquickcompiler
 
-    QMAKE_CFLAGS_RELEASE += -O3 -flto
-    QMAKE_CXXFLAGS_RELEASE += -O3 -flto
-    QMAKE_LFLAGS_RELEASE += -O3 -flto
+    TRANSLATION_ENABLED = false
+
+    QMAKE_CFLAGS_RELEASE += -flto
+    QMAKE_CXXFLAGS_RELEASE += -flto
+    QMAKE_LFLAGS_RELEASE += -flto
 } else: LIBS += -lz
 
 # Override bad default options to enable better optimizations
@@ -83,7 +84,7 @@ win32: {
 
 macx: ICON = resources/logo.icns
 
-wasm: SOURCES += core/os/os-emscripten.cpp
+# wasm: SOURCES += core/os/os-emscripten.cpp
 else: unix: SOURCES += core/os/os-linux.c
 
 android {
@@ -131,7 +132,7 @@ win32 {
 ASMCODE_IMPL = core/asmcode.c
 
 TRANSLATE = $$files("core/translate_"$$FB_ARCH".c*")
-equals(FB_ARCH, wasm): TRANSLATE = $$files("core/translate_js.c*")
+# equals(FB_ARCH, wasm): TRANSLATE = $$files("core/translate_js.c*")
 equals(TRANSLATION_ENABLED, auto) {
     isEmpty(TRANSLATE): TRANSLATION_ENABLED = false
     else: TRANSLATION_ENABLED = true
