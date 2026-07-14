@@ -1,14 +1,16 @@
 import QtQuick 2.0
-import QtQuick.Controls 1.0
-import QtQuick.Dialogs 1.0
+import QtQuick.Controls 2.3
+import Qt.labs.platform 1.1
 import QtQuick.Layouts 1.0
 import Firebird.Emu 1.0
 
 RowLayout {
+    id: root
     property string filePath: ""
     property bool selectExisting: true
     property alias subtext: subtextLabel.text
     property bool showCreateButton: false
+    property bool isWasm: Qt.platform.os === "wasm"
     signal create()
 
     // Hack to force reevaluation of Emu.fileExists(filePath) after reselection.
@@ -20,9 +22,9 @@ RowLayout {
         sourceComponent: FileDialog {
             folder: Emu.dir(filePath)
             // If save dialogs are not supported, force an open dialog
-            selectExisting: parent.selectExisting || !Emu.saveDialogSupported()
+            fileMode: (root.selectExisting || !Emu.saveDialogSupported()) ? FileDialog.OpenFile : FileDialog.SaveFile
             onAccepted: {
-                filePath = Emu.toLocalFile(fileUrl);
+                filePath = Emu.toLocalFile(file);
                 forceRefresh++;
             }
         }
@@ -61,18 +63,18 @@ RowLayout {
 
     // Button for either custom creation functionality (onCreate) or
     // if the open file dialog doesn't allow creation, to open a file creation dialog.
-    IconButton {
+    Button {
         visible: showCreateButton || (!selectExisting && !Emu.saveDialogSupported())
-        icon: "qrc:/icons/resources/icons/document-new.png"
+        icon.source: "qrc:/icons/resources/icons/document-new.png"
 
         Loader {
             id: createDialogLoader
             active: false
             sourceComponent: FileDialog {
-                folder: Emu.dir(filePath)
-                selectExisting: false
+                folder: Emu.dir(file)
+                fileMode: FileDialog.SaveFile
                 onAccepted: {
-                    filePath = Emu.toLocalFile(fileUrl);
+                    filePath = Emu.toLocalFile(file);
                     forceRefresh++;
                 }
             }
@@ -88,11 +90,24 @@ RowLayout {
         }
     }
 
-    IconButton {
-        icon: "qrc:/icons/resources/icons/document-edit.png"
+    Button {
+        icon.source: "qrc:/icons/resources/icons/document-edit.png"
         onClicked: {
-            dialogLoader.active = true;
-            dialogLoader.item.visible = true;
+            if (root.isWasm) {
+                Emu.makeLocalFile(root)
+            }
+            else {
+                dialogLoader.active = true;
+                dialogLoader.item.visible = true;
+            }
+        }
+    }
+
+    Button {
+        text: "↓"
+        Layout.preferredWidth: 25
+        onClicked: {
+            Emu.downloadFile(filePath)
         }
     }
 }

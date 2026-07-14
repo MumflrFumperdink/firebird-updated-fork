@@ -11,6 +11,10 @@
     #include "mainwindow.h"
 #endif
 
+#ifdef Q_OS_WASM
+#include <emscripten.h>
+#endif
+
 #include "core/emu.h"
 #include "core/os/os.h"
 #include "core/keypad.h"
@@ -282,6 +286,40 @@ void QMLBridge::sendFile(QUrl url, QString dir)
     usblink_queue_put_file(toLocalFile(url).toStdString(), dir.toStdString(), QMLBridge::usblink_progress_changed, this);
 }
 
+#ifdef Q_OS_WASM
+
+void QMLBridge::sendFileWasm()
+{
+    QFileDialog::getOpenFileContent(
+        QStringLiteral("TNS Documents or Operating Systems (*.tns *.tno *.tnc *.tco *.tcc *.tlo *.tmo *.tmc *.tco2 *.tcc2 *.tct2)"),
+        [this](const QString &fileName, const QByteArray &fileContent) {
+
+            if (!fileName.isEmpty()) {
+                QString dir_path = QStringLiteral("/home/web_user/appdata/calc_files/");
+                QString temp_new_filename = dir_path + fileName;
+
+                QFile file(temp_new_filename);
+
+                if (file.open(QIODevice::WriteOnly)) {
+                    qDebug() << fileName;
+
+                    file.write(fileContent);
+                    file.close();
+
+                    EM_ASM({
+                        FS.syncfs(false, function (err) {
+                            if (err) console.error("Error saving filesystem: ", err);
+                        });
+                    });
+
+                    usblink_queue_put_file(temp_new_filename.toStdString(), this->getUSBDir().toStdString(), QMLBridge::usblink_progress_changed, this);
+                }
+            }
+    });
+}
+
+#endif
+
 QString QMLBridge::basename(QString path)
 {
     if(path.isEmpty())
@@ -289,9 +327,13 @@ QString QMLBridge::basename(QString path)
 
     if(path.startsWith(QStringLiteral("content://")))
     {
-        auto parts = path.splitRef(QStringLiteral("%2F"), QString::SkipEmptyParts, Qt::CaseInsensitive);
+        #if QT_VERSION < QT_VERSION_CHECK(5, 15, 0)
+                auto parts = path.split(QStringLiteral("%2F"), QString::SkipEmptyParts, Qt::CaseInsensitive);
+        #else
+                auto parts = path.split(QStringLiteral("%2F"), Qt::SkipEmptyParts, Qt::CaseInsensitive);
+        #endif
         if(parts.length() > 1)
-            return parts.last().toString();
+            return parts.last();
 
         return tr("(Android File)");
     }
@@ -303,6 +345,36 @@ QUrl QMLBridge::dir(QString path)
 {
     return QUrl{QUrl::fromLocalFile(path).toString(QUrl::RemoveFilename)};
 }
+
+#ifdef Q_OS_WASM
+
+void QMLBridge::makeLocalFile(QObject* buttonRow) {
+    QFileDialog::getOpenFileContent(QStringLiteral("*"),  [buttonRow](const QString &fileName, const QByteArray &fileContent) {
+        if (!fileName.isEmpty()) {
+            QString dir_path = QStringLiteral("/home/web_user/appdata/");
+            QString temp_new_filename = dir_path + fileName;
+
+            QFile file(temp_new_filename);
+
+            if (file.open(QIODevice::WriteOnly)) {
+                file.write(fileContent);
+                file.close();
+
+                QMetaObject::invokeMethod(buttonRow, [buttonRow, temp_new_filename]() {
+                    buttonRow->setProperty("filePath", temp_new_filename);
+                }, Qt::QueuedConnection);
+
+                EM_ASM({
+                    FS.syncfs(false, function (err) {
+                        if (err) console.error("Error saving filesystem: ", err);
+                    });
+                });
+            }
+        }
+    });
+}
+
+#endif
 
 QString QMLBridge::toLocalFile(QUrl url)
 {
@@ -414,7 +486,11 @@ void QMLBridge::loadFile(int index, int role)
 {
     QFileDialog::getOpenFileContent(QStringLiteral("File%1 (*.*)").arg(role), [=](const QString &, const QByteArray &fileContent) {
         int kitId = kit_model.getDataRow(index, KitModel::IDRole).toInt();
+#ifdef Q_OS_WASM
+        QString path = QStringLiteral("/home/web_user/appdata/kit%1-%2").arg(kitId).arg(role);
+#else
         QString path = QStringLiteral("/tmp/kit%1-%2").arg(kitId).arg(role);
+#endif
         QFile file(path);
         if (file.open(QFile::WriteOnly)) {
             file.write(fileContent);
@@ -424,6 +500,18 @@ void QMLBridge::loadFile(int index, int role)
     });
 }
 
+void QMLBridge::downloadFile(QString path) {
+    qDebug() << path;
+
+    QFile snapshotFile(path);
+    if(!snapshotFile.open(QIODevice::ReadOnly))
+        return;
+
+    auto snapshotData = snapshotFile.readAll();
+
+    QFileDialog::saveFileContent(snapshotData, path.split(QStringLiteral("/")).last());
+}
+
 bool QMLBridge::saveSnapshot()
 {
     const int kitIndex = kit_model.indexForID(current_kit_id);
@@ -431,7 +519,11 @@ bool QMLBridge::saveSnapshot()
     // If the kit doesn't have a snapshot file assigned, do it now
     if(filename.isEmpty()) {
         // Same algorithm as above
+#ifdef Q_OS_WASM
+        filename = QStringLiteral("/home/web_user/appdata/Snapshot");
+#else
         filename = QStringLiteral("/tmp/kit%1-%2").arg(current_kit_id).arg(KitModel::SnapshotRole);
+#endif
         kit_model.setDataRow(kitIndex, filename, KitModel::SnapshotRole);
     }
 
@@ -439,13 +531,24 @@ bool QMLBridge::saveSnapshot()
     if(!emu_suspend(filename.toUtf8().constData()))
         return false;
 
+#ifdef Q_OS_WASM
+    EM_ASM({
+        FS.syncfs(false, function (err) {
+            if (err) console.error("Error saving filesystem: ", err);
+        });
+    });
+#endif
+
     // Read in all the data (again)
     QFile snapshotFile(filename);
     if(!snapshotFile.open(QIODevice::ReadOnly))
         return false;
 
     auto snapshotData = snapshotFile.readAll();
+
+#ifndef Q_OS_WASM
     QFileDialog::saveFileContent(snapshotData, QStringLiteral("%1-snapshot.img").arg(kit_model.getDataRow(kitIndex, KitModel::NameRole).toString()));
+#endif
 
     return true;
 }

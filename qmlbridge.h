@@ -86,10 +86,16 @@ public:
     Q_INVOKABLE bool isMobile();
 
     Q_INVOKABLE void sendFile(QUrl url, QString dir);
+#ifdef Q_OS_WASM
+    Q_INVOKABLE void sendFileWasm();
+#endif
 
     // Various utility functions
     Q_INVOKABLE QString basename(QString path);
     Q_INVOKABLE QUrl dir(QString path);
+#ifdef Q_OS_WASM
+    Q_INVOKABLE void makeLocalFile(QObject* buttonRow);
+#endif
     Q_INVOKABLE QString toLocalFile(QUrl url);
     Q_INVOKABLE bool fileExists(QString path);
     Q_INVOKABLE int kitIndexForID(unsigned int id);
@@ -122,6 +128,7 @@ public:
     Q_INVOKABLE QString osDescription(QString path);
 
     Q_INVOKABLE void loadFile(int index, int role);
+    Q_INVOKABLE void downloadFile(QString path);
     Q_INVOKABLE bool saveSnapshot();
 
     Q_INVOKABLE bool saveDialogSupported();

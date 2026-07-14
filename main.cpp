@@ -6,6 +6,10 @@
 #endif
 #include <QTranslator>
 
+#ifdef Q_OS_WASM
+#include <emscripten.h>
+#endif
+
 #include <QWindow>
 #include <QQmlApplicationEngine>
 
@@ -73,12 +77,98 @@ static void migrateSettings()
 
 int main(int argc, char **argv)
 {
-    #ifdef Q_OS_ANDROID
-        QGuiApplication::setAttribute(Qt::AA_DisableHighDpiScaling);
-    #else
-        QGuiApplication::setAttribute(Qt::AA_EnableHighDpiScaling);
+
+    #if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
+        #ifdef Q_OS_ANDROID
+            QGuiApplication::setAttribute(Qt::AA_DisableHighDpiScaling);
+        #else
+            QGuiApplication::setAttribute(Qt::AA_EnableHighDpiScaling);
+        #endif
+        QGuiApplication::setAttribute(Qt::AA_UseHighDpiPixmaps);
     #endif
-    QGuiApplication::setAttribute(Qt::AA_UseHighDpiPixmaps);
+
+#ifdef Q_OS_WASM
+        int bootApp(int argc, char *argv[]);
+
+        EM_ASM({
+            window.isIdbfsReady = false;
+
+            try {
+                FS.mkdirTree('/home/web_user/appdata');
+                FS.mount(FS.filesystems.IDBFS, {}, '/home/web_user/appdata');
+            } catch(e) {
+                console.log("Main Folder already exists or is mounted.");
+            }
+
+            FS.syncfs(true, function (err) {
+                if (err) {
+                    console.error("Error loading filesystem: ", err);
+                    return;
+                }
+
+                try {
+                    FS.writeFile('/home/web_user/appdata/.ready_marker', 'READY');
+                    window.isIdbfsReady = true;
+                } catch(e) {
+                    console.error("Failed to write ready marker:", e);
+                }
+            });
+        });
+
+        bootApp(argc, argv);
+
+        emscripten_exit_with_live_runtime();
+
+        return 0;
+
+}
+
+struct BootArgs {
+    int argc;
+    char** argv;
+};
+
+int bootApp(int argc, char *argv[]);
+
+void bootAppWrapper(void* arg) {
+    BootArgs* args = static_cast<BootArgs*>(arg);
+
+    bootApp(args->argc, args->argv);
+
+    // Clean up if was ready
+    int isReady = EM_ASM_INT({ return window.isIdbfsReady ? 1 : 0; });
+    if (isReady) {
+        delete args;
+    }
+}
+
+int bootApp(int argc, char *argv[]) {
+    int isReady = EM_ASM_INT({
+        return window.isIdbfsReady ? 1 : 0;
+    });
+
+    if (!isReady) {
+        // Filesystem not ready yet, checking again in 500ms...
+        BootArgs* args = new BootArgs{argc, argv};
+        emscripten_async_call(bootAppWrapper, args, 500);
+        return 0;
+    }
+
+    EM_ASM({
+        try {
+            FS.mkdir('/home/web_user/appdata/calc_files');
+
+            try {
+                FS.writeFile('/home/web_user/appdata/calc_files/.ready_marker', 'READY');
+            } catch(e) {
+                console.error("Failed to write ready marker:", e);
+            }
+        } catch(e) {
+            // console.log("calc_files Folder already exists or is mounted.");
+        }
+    });
+
+#endif
 
     #ifdef MOBILE_UI
         QGuiApplication app(argc, argv);
@@ -104,7 +194,9 @@ int main(int argc, char **argv)
     QCoreApplication::setApplicationName(QStringLiteral("firebird-emu"));
 
     // Needed for settings migration
-    qRegisterMetaTypeStreamOperators<KitModel>();
+    #if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
+        qRegisterMetaTypeStreamOperators<KitModel>();
+    #endif
     qRegisterMetaType<KitModel>();
 
     migrateSettings();

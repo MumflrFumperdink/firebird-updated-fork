@@ -528,6 +528,7 @@ bool usblink_put_file(const char *filepath, const char *folder, usblink_progress
     mode = File_Send;
 
     char *dot = strrchr(filepath, '.');
+
     // TODO (thanks for the reminder, Excale :P) : Filter depending on which model is being emulated
     if (dot && (!strcmp(dot, ".tno") || !strcmp(dot, ".tnc")
              || !strcmp(dot, ".tco") || !strcmp(dot, ".tcc")

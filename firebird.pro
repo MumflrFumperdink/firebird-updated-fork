@@ -15,7 +15,7 @@ isEmpty(SUPPORT_LINUX) | equals(SUPPORT_LINUX, auto) {
 # Localization
 TRANSLATIONS += i18n/de_DE.ts i18n/fr_FR.ts i18n/pl_PL.ts
 
-QT += core gui widgets quickwidgets
+QT += core gui widgets quick
 android: QT += androidextras
 CONFIG += c++11
 
@@ -46,6 +46,15 @@ wasm {
     QMAKE_CFLAGS += -s USE_ZLIB
     QMAKE_CXXFLAGS += -s USE_ZLIB
     QMAKE_LFLAGS += -s USE_ZLIB
+
+    QMAKE_LFLAGS += -lidbfs.js
+
+    TRANSLATION_ENABLED = true
+    CONFIG += qtquickcompiler
+
+    QMAKE_CFLAGS_RELEASE += -O3 -flto
+    QMAKE_CXXFLAGS_RELEASE += -O3 -flto
+    QMAKE_LFLAGS_RELEASE += -O3 -flto
 } else: LIBS += -lz
 
 # Override bad default options to enable better optimizations
@@ -74,8 +83,8 @@ win32: {
 
 macx: ICON = resources/logo.icns
 
-# This does also apply to android
-unix: SOURCES += core/os/os-linux.c
+wasm: SOURCES += core/os/os-emscripten.cpp
+else: unix: SOURCES += core/os/os-linux.c
 
 android {
     # Special implementation of fopen_utf8
@@ -96,7 +105,6 @@ ios {
     ios_icon.files = $$files(resources/ios/Icon*.png)
     QMAKE_BUNDLE_DATA += ios_icon
 }
-
 # QMAKE_HOST can be e.g. armv7hl, but QT_ARCH would be arm in such cases
 FB_ARCH = $$QT_ARCH
 
@@ -287,7 +295,7 @@ SOURCES += core/asmcode_arm.S \
     core/asmcode_x86.S \
     core/asmcode_x86_64.S \
     core/asmcode.c \
-    core/os/os-emscripten.c \
+    core/os/os-emscripten.cpp \
     core/translate_arm.cpp \
     core/translate_aarch64.cpp \
     core/translate_js.cpp \

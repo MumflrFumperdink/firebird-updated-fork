@@ -103,46 +103,46 @@ int main(int argc, char *argv[])
 		return 2;
 	}
 
-	path_boot1 = boot1;
-	path_flash = flash;
+    path_boot1 = boot1;
+    path_flash = flash;
 
-	if(!emu_start(0, 0, snapshot))
-		return 1;
+    if(!emu_start(0, 0, snapshot))
+        return 1;
 
-	if(rampayload)
-	{
-		FILE *f = fopen(rampayload, "rb");
-		if(!f)
-		{
-			perror("Could not open RAM payload");
-			return 3;
-		}
+    if(rampayload)
+    {
+        FILE *f = fopen(rampayload, "rb");
+        if(!f)
+        {
+            perror("Could not open RAM payload");
+            return 3;
+        }
 
-		fseek(f, 0, SEEK_END);
-		size_t size = ftell(f);
-		rewind(f);
+        fseek(f, 0, SEEK_END);
+        size_t size = ftell(f);
+        rewind(f);
 
-		void *target = phys_mem_ptr(rampayload_base, size);
-		if(!target)
-		{
-			fprintf(stderr, "RAM payload too big");
-			return 5;
-		}
+        void *target = phys_mem_ptr(rampayload_base, size);
+        if(!target)
+        {
+            fprintf(stderr, "RAM payload too big");
+            return 5;
+        }
 
-		if(fread(target, size, 1, f) != 1)
-		{
-			perror("Could not read RAM payload");
-			return 4;
-		}
+        if(fread(target, size, 1, f) != 1)
+        {
+            perror("Could not read RAM payload");
+            return 4;
+        }
 
-		fclose(f);
+        fclose(f);
 
-		// Jump to payload
-		arm.reg[15] = rampayload_base;
-	}
+        // Jump to payload
+        arm.reg[15] = rampayload_base;
+    }
 
-	turbo_mode = true;
-	emu_loop(false);
+    turbo_mode = true;
+    emu_loop(false);
 
 	return 0;
 }

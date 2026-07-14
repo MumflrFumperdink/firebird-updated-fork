@@ -78,6 +78,7 @@ void usblink_queue_do()
         return;
 
     usblink_queue_action action = usblink_queue.front();
+
     switch(action.action)
     {
     case usblink_queue_action::PUT_FILE:

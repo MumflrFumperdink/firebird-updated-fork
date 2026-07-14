@@ -4,3 +4,6 @@
 *.user.*
 *.bc
 *.qmlc
+*.DS_Store
+.qmake.stash
+/build/*

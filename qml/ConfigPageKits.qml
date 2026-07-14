@@ -1,5 +1,5 @@
 import QtQuick 2.0
-import QtQuick.Controls 1.0
+import QtQuick.Controls 2.0
 import QtQuick.Layouts 1.0
 import Firebird.Emu 1.0
 import Firebird.UIComponents 1.0
@@ -26,18 +26,17 @@ ColumnLayout {
     GroupBox {
         Layout.fillWidth: true
         Layout.minimumWidth: contentItem.Layout.minimumWidth
-        Layout.bottomMargin: -1
         title: qsTr("Kit Properties")
 
         GridLayout {
             anchors.fill: parent
-            columns: (width < 550 || Qt.platform.os === "android") ? 3 : 6
+            columns: (width < 550 || Qt.platform.os === "android") ? 2 : 4
 
             FBLabel {
                 Layout.columnSpan: parent.columns
                 Layout.fillWidth: true
                 color: "red"
-                visible: kitList.currentItem.myData.boot1 === "" || kitList.currentItem.myData.flash === ""
+                visible: boot1Edit.filePath == "" || flashEdit.filePath == ""
                 wrapMode: Text.WordWrap
                 text: qsTr("You need to specify files for Boot1 and Flash")
             }
@@ -50,7 +49,6 @@ ColumnLayout {
             TextField {
                 id: nameEdit
                 placeholderText: qsTr("Name")
-                Layout.columnSpan: 2
                 Layout.fillWidth: true
 
                 text: kitList.currentItem.myData.name
@@ -66,22 +64,15 @@ ColumnLayout {
                 elide: Text.ElideMiddle
             }
 
-            FBLabel {
-                property string filePath: kitList.currentItem.myData.boot1
-                elide: "ElideRight"
-
+            FileSelect {
+                id: boot1Edit
                 Layout.fillWidth: true
-                // Allow the label to shrink below its implicitWidth.
-                // Without this, the layout doesn't allow it to go smaller...
-                Layout.preferredWidth: 100
-
-                font.italic: filePath === ""
-                text: filePath === "" ? qsTr("(none)") : Emu.basename(filePath)
-            }
-
-            IconButton {
-                icon: "qrc:/icons/resources/icons/document-edit.png"
-                onClicked: Emu.loadFile(kitList.currentIndex, KitModel.Boot1Role)
+                filePath: kitList.currentItem.myData.boot1
+                onFilePathChanged: {
+                    if(filePath !== kitList.currentItem.myData.boot1)
+                        kitModel.setDataRow(kitList.currentIndex, filePath, KitModel.Boot1Role);
+                    filePath = Qt.binding(function() { return kitList.currentItem.myData.boot1; });
+                }
             }
 
             FBLabel {
@@ -89,22 +80,24 @@ ColumnLayout {
                 elide: Text.ElideMiddle
             }
 
-            FBLabel {
-                property string filePath: kitList.currentItem.myData.flash
-                elide: "ElideRight"
-
+            FileSelect {
+                id: flashEdit
                 Layout.fillWidth: true
-                // Allow the label to shrink below its implicitWidth.
-                // Without this, the layout doesn't allow it to go smaller...
-                Layout.preferredWidth: 100
-
-                font.italic: filePath === ""
-                text: filePath === "" ? qsTr("(none)") : Emu.basename(filePath)
+                filePath: kitList.currentItem.myData.flash
+                onFilePathChanged: {
+                    if(filePath !== kitList.currentItem.myData.flash)
+                        kitModel.setDataRow(kitList.currentIndex, filePath, KitModel.FlashRole);
+                    filePath = Qt.binding(function() { return kitList.currentItem.myData.flash; });
+                }
+                showCreateButton: true
+                onCreate: flashDialog.visible = true
             }
 
-            IconButton {
-                icon: "qrc:/icons/resources/icons/document-edit.png"
-                onClicked: Emu.loadFile(kitList.currentIndex, KitModel.FlashRole)
+            FlashDialog {
+                id: flashDialog
+                onFlashCreated: {
+                    kitModel.setDataRow(kitList.currentIndex, filePath, KitModel.FlashRole);
+                }
             }
 
             FBLabel {
@@ -112,22 +105,16 @@ ColumnLayout {
                 elide: Text.ElideMiddle
             }
 
-            FBLabel {
-                property string filePath: kitList.currentItem.myData.snapshot
-                elide: "ElideRight"
-
+            FileSelect {
+                id: snapshotEdit
                 Layout.fillWidth: true
-                // Allow the label to shrink below its implicitWidth.
-                // Without this, the layout doesn't allow it to go smaller...
-                Layout.preferredWidth: 100
-
-                font.italic: filePath === ""
-                text: filePath === "" ? qsTr("(none)") : Emu.basename(filePath)
-            }
-
-            IconButton {
-                icon: "qrc:/icons/resources/icons/document-edit.png"
-                onClicked: Emu.loadFile(kitList.currentIndex, KitModel.SnapshotRole)
+                selectExisting: false
+                filePath: kitList.currentItem.myData.snapshot
+                onFilePathChanged: {
+                    if(filePath !== kitList.currentItem.myData.snapshot)
+                        kitModel.setDataRow(kitList.currentIndex, filePath, KitModel.SnapshotRole);
+                    filePath = Qt.binding(function() { return kitList.currentItem.myData.snapshot; });
+                }
             }
         }
     }

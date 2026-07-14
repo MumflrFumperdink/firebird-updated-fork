@@ -2,8 +2,8 @@ import Firebird.Emu 1.0
 import Firebird.UIComponents 1.0
 
 import QtQuick 2.0
-import QtQuick.Controls 1.2
-import QtQuick.Dialogs 1.1
+import QtQuick.Controls 2.0
+import Qt.labs.platform 1.1
 import QtQuick.Layouts 1.0
 
 ApplicationWindow {
@@ -60,12 +60,11 @@ ApplicationWindow {
 
     MessageDialog {
         id: suspendFailedDialog
-        standardButtons: StandardButton.Yes | StandardButton.No
-        icon: StandardIcon.Warning
+        buttons: MessageDialog.Yes | MessageDialog.No
         title: qsTr("Suspend failed")
         text: qsTr("Suspending the emulation failed. Do you still want to quit Firebird?")
 
-        onYes: {
+        onYesClicked: {
             ignoreSuspendOnClose = true;
             app.close();
         }
@@ -73,7 +72,7 @@ ApplicationWindow {
 
     Connections {
         target: Emu
-        onEmuSuspended: {
+        function onEmuSuspended() {
             if(closeAfterSuspend)
             {
                 closeAfterSuspend = false;
@@ -87,14 +86,14 @@ ApplicationWindow {
                     suspendFailedDialog.visible = true;
             }
         }
-        onToastMessage: {
+        function onToastMessage(msg) {
             toast.showMessage(msg);
         }
     }
 
     Connections {
         target: Qt.application
-        onStateChanged: {
+        function onStateChanged() {
             switch (Qt.application.state)
             {
                 case Qt.ApplicationSuspended: // Might be reaped on mobile
@@ -135,7 +134,7 @@ ApplicationWindow {
         pixelAligned: true
 
         // Keep the pages alive
-        cacheBuffer: width * count
+        cacheBuffer: 500
 
         model: [ "MobileUIConfig.qml", "MobileUIDrawer.qml", "MobileUIFront.qml" ]
 
@@ -192,7 +191,7 @@ ApplicationWindow {
                 listView.pageX[index] = x;
             }
 
-            width: modelData === "MobileUIDrawer.qml" ? loader.item.implicitWidth : app.width
+            width: (modelData === "MobileUIDrawer.qml") && loader.item ? loader.item.implicitWidth : app.width
             height: app.height
 
             Rectangle {
