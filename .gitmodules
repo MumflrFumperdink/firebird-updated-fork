@@ -1,3 +1,6 @@
 [submodule "core/gif-h"]
 	path = core/gif-h
 	url = https://github.com/jacobly0/gif-h
+[submodule "core/qtusb"]
+	path = core/qtusb
+	url = https://github.com/fpoussin/QtUsb.git

@@ -52,6 +52,7 @@ ColumnLayout {
 
         Button {
             text: qsTr("Send files")
+            enabled: !Emu.isConnectedToDevice
             // If this button is disabled, the transfer directory textinput has the focus again,
             // which is annoying on mobile.
             // enabled: Emu.isRunning
@@ -136,6 +137,43 @@ ColumnLayout {
             onTextChanged: {
                 Emu.usbdir = text
                 text = Qt.binding(function() { return Emu.usbdir; });
+            }
+        }
+    }
+
+    FBLabel {
+        text: qsTr("USB Connection")
+        font.pixelSize: TextMetrics.title2Size
+        Layout.topMargin: 5
+        Layout.bottomMargin: 5
+    }
+
+    RowLayout {
+        id: usbConnectSection
+
+        Layout.fillWidth: true
+
+        property var isUSBSupported: function() {
+            if (Qt.platform.os === "wasm") {
+                return Emu.hasWebUsb
+            }
+
+            return true;
+        }
+
+        FBLabel {
+            Layout.fillWidth: true
+            text: (usbConnectSection.isUSBSupported() ? qsTr("Begin connection to USB device") : qsTr("WebUSB is only supported on Chrome"))
+            wrapMode: Text.WordWrap
+        }
+
+        Button {
+            text: qsTr("Connect to USB")
+            enabled: usbConnectSection.isUSBSupported() && !(transferProgress.indeterminate || (0 < transferProgress.value && transferProgress.value < 100))
+            Layout.topMargin: 5
+            Layout.bottomMargin: 5
+            onClicked: {
+                Emu.connectToUSB();
             }
         }
     }

@@ -12,6 +12,29 @@ extern "C" {
 extern bool usblink_sending, usblink_connected;
 extern int usblink_state;
 
+#define CONSTANT  BSWAP16(0x54FD)
+#define SRC_ADDR  BSWAP16(0x6400)
+#define DST_ADDR  BSWAP16(0x6401)
+
+struct packet {
+    uint16_t constant;
+    struct { uint16_t addr, service; } src;
+    struct { uint16_t addr, service; } dst;
+    uint16_t data_check;
+    uint8_t data_size; // If 0xFF, bigdata* counts
+    uint8_t ack;
+    uint8_t seqno;
+    uint8_t hdr_check;
+    union {
+        uint8_t      data[254];
+        struct {
+            uint32_t bigdatasize;
+            uint8_t  bigdata[1440];
+        };
+        uint8_t      fulldata[1444];
+    };
+};
+
 struct usblink_file {
     const char *filename;
     uint32_t size;

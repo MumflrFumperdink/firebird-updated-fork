@@ -30,6 +30,18 @@ typedef struct usb_setup {
     uint16_t wLength;
 } __attribute__((packed)) usb_setup;
 
+struct usb_qh { // Queue head
+    uint32_t flags;
+    uint32_t current_td;
+    struct usb_td { // Transfer descriptor
+        uint32_t next_td;
+        uint32_t flags;
+        uint32_t bufptr[5];
+    } overlay;
+    uint32_t reserved;
+    struct usb_setup setup;
+};
+
 extern usb_state usb;
 void usb_reset(void);
 typedef struct emu_snapshot emu_snapshot;

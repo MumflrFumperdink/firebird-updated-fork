@@ -6,13 +6,10 @@
 
 #include "emuthread.h"
 #include "qmlbridge.h"
+#include "usbconnectionmanager.h"
 
 #ifndef MOBILE_UI
     #include "mainwindow.h"
-#endif
-
-#ifdef Q_OS_WASM
-#include <emscripten.h>
 #endif
 
 #include "core/emu.h"
@@ -293,7 +290,6 @@ void QMLBridge::sendFileWasm()
     QFileDialog::getOpenFileContent(
         QStringLiteral("TNS Documents or Operating Systems (*.tns *.tno *.tnc *.tco *.tcc *.tlo *.tmo *.tmc *.tco2 *.tcc2 *.tct2)"),
         [this](const QString &fileName, const QByteArray &fileContent) {
-
             if (!fileName.isEmpty()) {
                 QString dir_path = QStringLiteral("/home/web_user/appdata/calc_files/");
                 QString temp_new_filename = dir_path + fileName;
@@ -301,8 +297,6 @@ void QMLBridge::sendFileWasm()
                 QFile file(temp_new_filename);
 
                 if (file.open(QIODevice::WriteOnly)) {
-                    qDebug() << fileName;
-
                     file.write(fileContent);
                     file.close();
 
@@ -319,6 +313,35 @@ void QMLBridge::sendFileWasm()
 }
 
 #endif
+
+void QMLBridge::connectToUSB() {
+    #ifdef Q_OS_WASM
+        EM_ASM({
+            navigator.usb.getDevices()
+            .then(async function(devices) {
+                if (devices.length > 0) {
+                    await devices[0].forget();
+                    console.log("Device unpaired successfully.");
+                }
+
+                navigator.usb.requestDevice({
+                                 filters: [/*{ vendorId: targetVid, productId: targetPid }*/]
+                             })
+                    .then(device => {
+                        globalThis.activeUsbDevice = device;
+
+                        _on_usb_device_connected(device.vendorId, device.productId);
+                    })
+                    .catch(err => {
+                        console.error("USB Request failed:", err);
+                    });
+
+            });
+        });
+    #else
+        the_usb_connection_manager->initDevice();
+    #endif
+}
 
 QString QMLBridge::basename(QString path)
 {

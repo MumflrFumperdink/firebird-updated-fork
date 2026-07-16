@@ -4,6 +4,10 @@
 #include <QObject>
 #include <QtQml>
 
+#ifdef Q_OS_WASM
+#include <emscripten.h>
+#endif
+
 #include "kitmodel.h"
 
 class QMLBridge : public QObject
@@ -28,6 +32,7 @@ public:
     Q_PROPERTY(QString version READ getVersion CONSTANT)
     Q_PROPERTY(bool isRunning READ getIsRunning NOTIFY isRunningChanged)
     Q_PROPERTY(KitModel* kits READ getKitModel CONSTANT)
+    Q_PROPERTY(bool isConnectedToDevice READ getIsConnectedToDevice NOTIFY isConnectedToDeviceChanged)
 
     Q_PROPERTY(double speed READ getSpeed NOTIFY speedChanged)
     Q_PROPERTY(bool turboMode READ getTurboMode WRITE setTurboMode NOTIFY turboModeChanged)
@@ -88,7 +93,31 @@ public:
     Q_INVOKABLE void sendFile(QUrl url, QString dir);
 #ifdef Q_OS_WASM
     Q_INVOKABLE void sendFileWasm();
+
+    Q_PROPERTY(bool hasWebUsb READ hasWebUsb CONSTANT)
+
+    bool hasWebUsb() {
+        return EM_ASM_INT({
+            return (navigator.usb !== undefined) ? 1 : 0;
+        });
+        return false;
+    }
 #endif
+    Q_INVOKABLE void connectToUSB();
+
+    Q_INVOKABLE bool getIsConnectedToDevice() { return is_connected_to_device; }
+    void setIsConnectedToDevice(bool is_connected) {
+        if (is_connected_to_device == is_connected) return;
+        is_connected_to_device = is_connected;
+
+        if (is_connected_to_device)
+            toastMessage(tr("USB Device Connected"));
+        else
+            toastMessage(tr("USB Device Disconnected"));
+
+        emit isConnectedToDeviceChanged();
+    }
+
 
     // Various utility functions
     Q_INVOKABLE QString basename(QString path);
@@ -161,6 +190,7 @@ signals:
     void isRunningChanged();
     void speedChanged();
     void turboModeChanged();
+    void isConnectedToDeviceChanged();
 
     void currentKitChanged(const Kit &kit);
 
@@ -186,6 +216,7 @@ private:
     KitModel kit_model;
     QSettings settings;
     bool is_active = false;
+    bool is_connected_to_device = false;
 };
 
 extern QMLBridge *the_qml_bridge;

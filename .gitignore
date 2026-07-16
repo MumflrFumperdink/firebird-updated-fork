@@ -7,3 +7,5 @@
 *.DS_Store
 .qmake.stash
 /build/*
+/core/qtusb
+/core/qtusb/*

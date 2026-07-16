@@ -69,5 +69,6 @@ private:
 };
 
 extern EmuThread emu_thread;
+static std::atomic<bool> usb_disconnect_pending{false};
 
 #endif // EMUTHREAD_H

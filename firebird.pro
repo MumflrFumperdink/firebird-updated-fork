@@ -15,7 +15,7 @@ isEmpty(SUPPORT_LINUX) | equals(SUPPORT_LINUX, auto) {
 # Localization
 TRANSLATIONS += i18n/de_DE.ts i18n/fr_FR.ts i18n/pl_PL.ts
 
-QT += core gui widgets quick
+QT += core gui widgets quick usb
 android: QT += androidextras
 CONFIG += c++11
 
@@ -24,6 +24,14 @@ TARGET = firebird-emu
 
 # Warn if git submodules not downloaded
 !exists("core/gif-h/gif.h"): error("You have to run 'git submodule init' and 'git submodule update' first.")
+!exists("core/qtusb"): error("You have to run 'git submodule init', 'git submodule update --init --recursive', and 'mkdir core/qtusb/build && cd core/qtusb/build; sed -i '' 's|$${LITERAL_HASH}include \\\"qusb.h\\\"|$${LITERAL_HASH}include <QtUsb/qusb.h>|' ../src/usb/qusbdevice.h; sed -i '' 's|$${LITERAL_HASH}include \\\"qusb.h\\\"|$${LITERAL_HASH}include <QtUsb/qusb.h>|' ../src/usb/qusbendpoint.h; sed -i '' 's|$${LITERAL_HASH}include \\\"qusbdevice.h\\\"|$${LITERAL_HASH}include <QtUsb/qusbdevice.h>|; s|$${LITERAL_HASH}include "qusb.h"|$${LITERAL_HASH}include <QtUsb/qusb.h>|' ../src/usb/qusbendpoint.h; sed -i '' 's|\\\"-framework AppKit\\\"|\\\"-framework AppKit\\\"\'$\'\\\\n  \\\"-framework Security\\\"|' ../src/usb/CMakeLists.txt; cmake ..; make install; cd ../../..' first.")
+
+system(mkdir -p $$shell_quote($$QTUSB_SUBMODULE_DIR/build) && \
+    cd $$shell_quote($$QTUSB_SUBMODULE_DIR/build) && \
+    cmake $$shell_quote($$QTUSB_SUBMODULE_DIR) -DQT_BUILD_SHARED_LIBS=OFF && \
+    make)
+
+STATIC_LIB_TARGET = $$QTUSB_SUBMODULE_DIR/src/usb/libQt6Usb.a
 
 unix: !android {
     # For make install support
@@ -47,7 +55,7 @@ wasm {
     QMAKE_CXXFLAGS += -s USE_ZLIB
     QMAKE_LFLAGS += -s USE_ZLIB
 
-    QMAKE_LFLAGS += -lidbfs.js
+    QMAKE_LFLAGS += -lidbfs.js -s EXPORTED_FUNCTIONS=['_main','_malloc','_free']
 
     CONFIG += qtquickcompiler
 
@@ -82,10 +90,12 @@ win32: {
     QMAKE_CXXFLAGS += -mno-ms-bitfields
 }
 
-macx: ICON = resources/logo.icns
+macx: {
+    QT_ARCH = arm64 x86_64
+    ICON = resources/logo.icns
+}
 
-# wasm: SOURCES += core/os/os-emscripten.cpp
-else: unix: SOURCES += core/os/os-linux.c
+unix: SOURCES += core/os/os-linux.c
 
 android {
     # Special implementation of fopen_utf8
@@ -205,6 +215,7 @@ SOURCES += $$ASMCODE_IMPL \
     core/debug.cpp \
     core/flash.cpp \
     core/emu.cpp \
+    usbconnectionmanager.cpp \
     usblinktreewidget.cpp \
     kitmodel.cpp \
     fbaboutdialog.cpp \
@@ -254,6 +265,7 @@ HEADERS += \
     core/usblink.h \
     core/usblink_queue.h \
     qtframebuffer.h \
+    usbconnectionmanager.h \
     usblinktreewidget.h \
     kitmodel.h \
     fbaboutdialog.h \

@@ -12,29 +12,6 @@
 #include "usblink_cx2.h"
 #include "os/os.h"
 
-struct packet {
-    uint16_t constant;
-    struct { uint16_t addr, service; } src;
-    struct { uint16_t addr, service; } dst;
-    uint16_t data_check;
-    uint8_t data_size; // If 0xFF, bigdata* counts
-    uint8_t ack;
-    uint8_t seqno;
-    uint8_t hdr_check;
-    union {
-        uint8_t      data[254];
-        struct {
-            uint32_t bigdatasize;
-            uint8_t  bigdata[1440];
-        };
-        uint8_t      fulldata[1444];
-    };
-};
-
-#define CONSTANT  BSWAP16(0x54FD)
-#define SRC_ADDR  BSWAP16(0x6400)
-#define DST_ADDR  BSWAP16(0x6401)
-
 enum SID {
     SID_File = 0x8001,
     SID_Dirlist
@@ -136,12 +113,14 @@ static void dump_packet(char *type, const void *data, uint32_t size) {
 struct packet usblink_send_buffer;
 void usblink_send_packet() {
     extern void usblink_start_send();
+
     usblink_send_buffer.constant   = CONSTANT;
     usblink_send_buffer.src.addr   = SRC_ADDR;
     usblink_send_buffer.dst.addr   = DST_ADDR;
     usblink_send_buffer.data_check = usblink_data_checksum(&usblink_send_buffer);
     usblink_send_buffer.hdr_check  = usblink_header_checksum(&usblink_send_buffer);
     dump_packet("send", &usblink_send_buffer, 16 + packet_fulldatasize(&usblink_send_buffer));
+
     usblink_start_send();
 }
 
@@ -814,7 +793,11 @@ void usblink_timer() {
 }
 
 void usblink_receive(int ep, void *buf, uint32_t size) {
-    //printf("usblink_receive(%d,%p,%d)\n", ep, buf, size);
+    extern void send_usb_packet_to_device(int endpointNumber, uint8_t* buffer, int length);
+    extern bool qmlIsConnectedToDevice();
+
+    //printf("usblink_receive(%d,%p,%d), usblink_state=%d\n", ep, buf, size, usblink_state);
+
     if (ep == 0) {
         if (usblink_state == 3) {
             //printf("Sent SET_ADDRESS, sending SET_CONFIGURATION\n");
@@ -823,6 +806,41 @@ void usblink_receive(int ep, void *buf, uint32_t size) {
             usblink_state = 0;
         }
     } else {
+        if (qmlIsConnectedToDevice()) {
+            struct packet *in = (struct packet *)buf;
+
+            if (in->src.service == BSWAP16(0xFF)) {
+                emuprintf("inject out ACK\n");
+            }
+            else {
+                emuprintf("inject out %x:%x -> %x:%x \n", BSWAP16(in->src.addr), BSWAP16(in->src.service), BSWAP16(in->dst.addr), BSWAP16(in->dst.service));
+                for (int i = 0; i < in->data_size; i++)
+                    emuprintf(" %02x [%c]", in->data[i], isprint(in->data[i]) ? in->data[i] : '?');
+                emuprintf("\n");
+            }
+
+            if (in && in->src.service == BSWAP16(0x4003)) { /* Address request, spoof */
+                struct packet *out = &usblink_send_buffer;
+
+                // printf("usblink out addr req.\n");
+
+                out->src.service = BSWAP16(0x4003);
+                out->dst.service = BSWAP16(0x4003);
+                out->data_size = 4;
+                out->ack = 0;
+                out->seqno = 1;
+                uint16_t tmp = DST_ADDR;
+                memcpy(out->data + 0, &tmp, sizeof(tmp)); // *(uint16_t *)&out->data[0] = DST_ADDR;
+                tmp = BSWAP16(0xFF00);
+                memcpy(out->data + 2, &tmp, sizeof(tmp)); // *(uint16_t *)&out->data[2] = BSWAP16(0xFF00);
+                usblink_send_packet();
+                return;
+            }
+
+            send_usb_packet_to_device(ep, buf, size);
+            return;
+        }
+
         if (size >= 16)
             usblink_received_packet(buf, size);
     }
