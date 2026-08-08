@@ -242,8 +242,6 @@ void send_usb_packet_to_device(int endpointNumber, uint8_t* buffer, int length) 
 
 USBConnectionManager *the_usb_connection_manager = new USBConnectionManager();
 
-#endif
-
 
 USBConnectionManager::USBConnectionManager(QObject *parent) : QObject(parent) {
     m_device = new QUsbDevice(this);
@@ -400,3 +398,5 @@ void USBConnectionManager::onErrorOccurred(int status) {
     }
     qDebug() << "Endpoint stream intercepted error status code:" << status;
 }
+
+#endif

@@ -56,7 +56,7 @@ Rectangle {
     MultiPointTouchArea {
         id: multiMouseArea
 
-        mouseEnabled: Qt.platform.os === "android" || Qt.platform.os === "ios"
+        mouseEnabled: Qt.platform.os === "android" || Qt.platform.os === "ios" || Qt.platform.os === "wasm"
         maximumTouchPoints: 1
         minimumTouchPoints: 1
 

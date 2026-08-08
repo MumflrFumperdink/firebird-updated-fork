@@ -121,7 +121,7 @@ uint16_t usb_read_half(uint32_t addr) {
     return bad_read_half(addr);
 }
 uint32_t usb_read_word(uint32_t addr) {
-    printf("[usb read  %08x]\n", addr);
+    //printf("[usb read  %08x]\n", addr);
     switch (addr & 0x1FF) {
         /* Module identification registers */
         case 0x000: return 0x0042FA05; // ID: revision 0x42, ID 5
@@ -162,7 +162,7 @@ uint32_t usb_read_word(uint32_t addr) {
     return bad_read_word(addr);
 }
 void usb_write_word(uint32_t addr, uint32_t value) {
-    printf("[usb write %08x %08x]\n", addr, value);
+    //printf("[usb write %08x %08x]\n", addr, value);
     switch (addr & 0x1FF) {
         /* Device/host timer registers */
         case 0x080: return; // used by diags

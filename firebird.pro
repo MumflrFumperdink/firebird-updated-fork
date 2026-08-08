@@ -15,7 +15,7 @@ isEmpty(SUPPORT_LINUX) | equals(SUPPORT_LINUX, auto) {
 # Localization
 TRANSLATIONS += i18n/de_DE.ts i18n/fr_FR.ts i18n/pl_PL.ts
 
-QT += core gui widgets quick usb
+QT += core gui widgets quick
 android: QT += androidextras
 CONFIG += c++11
 
@@ -64,7 +64,10 @@ wasm {
     QMAKE_CFLAGS_RELEASE += -flto
     QMAKE_CXXFLAGS_RELEASE += -flto
     QMAKE_LFLAGS_RELEASE += -flto
-} else: LIBS += -lz
+} else: {
+    LIBS += -lz
+    QT += usb
+}
 
 # Override bad default options to enable better optimizations
 QMAKE_CFLAGS_RELEASE = -O3 -DNDEBUG

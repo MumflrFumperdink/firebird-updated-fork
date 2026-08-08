@@ -1,11 +1,14 @@
 #ifndef USBCONNECTIONMANAGER_H
 #define USBCONNECTIONMANAGER_H
 
+#include <QtGlobal>
+
 #ifndef Q_OS_WASM
+
 #include <QObject>
 #include <QUsbDevice>
 #include <QUsbEndpoint>
-#endif
+
 
 class USBConnectionManager : public QObject {
     Q_OBJECT
@@ -25,5 +28,7 @@ private:
 };
 
 extern USBConnectionManager *the_usb_connection_manager;
+
+#endif
 
 #endif // USBCONNECTIONMANAGER_H
