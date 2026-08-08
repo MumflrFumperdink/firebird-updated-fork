@@ -23,6 +23,14 @@ SPDX-License-Identifier: LicenseRef-Qt-Commercial OR GPL-3.0-only
       /* Make the html body cover the entire (visual) viewport with no scroll bars. */
       html, body { background-color: white; padding: 0; margin: 0; overflow: hidden; height: 100% }
       #screen { width: 100%; height: 100%; }
+
+      html, body, canvas {
+        -webkit-touch-callout: none;   /* kills the Copy/Look Up/Translate menu */
+        -webkit-user-select: none;     /* stops text-selection highlighting */
+        user-select: none;
+        -webkit-tap-highlight-color: transparent; /* bonus: removes the gray tap flash */
+        touch-action: none;            /* stops Safari's own pan/zoom gestures from competing with Qt's touch handling */
+      }
     </style>
 
     <!-- Service Worker script for GitHub Pages Cross-Origin Isolation -->
